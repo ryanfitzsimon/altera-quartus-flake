@@ -79,16 +79,9 @@ let
     pkgs.stdenv.cc.cc.lib
   ];
 
-  # Keep in sync with runtimeLibPath64
-  runtimeLibPath32 =
-    stdenv.lib.makeLibraryPath (getLibPathPkgs pkgsi686Linux);
-
-  # Keep in sync with runtimeLibPath32
-  runtimeLibPath64 =
-    stdenv.lib.makeLibraryPath (getLibPathPkgs s);
-
   runtimeLibPath =
-    if is32bitPackage then runtimeLibPath32 else runtimeLibPath64;
+    stdenv.lib.makeLibraryPath
+    ((getLibPathPkgs s) ++ (stdenv.lib.optionals is32bitPackage (getLibPathPkgs pkgsi686Linux)));
 
   runtimeBinPath = stdenv.lib.makeBinPath
     [ coreutils gnugrep gnused glibc proot ];
@@ -110,9 +103,8 @@ let
       ${utillinux}/bin/mount --rbind /nix  "$chrootdir"/nix
       ${utillinux}/bin/mount --rbind /tmp  "$chrootdir"/tmp
       ${utillinux}/bin/mount --rbind /dev  "$chrootdir"/dev
-    '' + (if is32bitPackage then ''
       ${utillinux}/bin/mount --rbind "${glibc_lib32_for_installer}"/lib "$chrootdir"/lib
-    '' else ''
+    '' + (stdenv.lib.optionalString is32bitPackage ''
       ${utillinux}/bin/mount --rbind "${glibc_lib_for_installer}"/lib64 "$chrootdir"/lib64
     '') + ''
       ${utillinux}/bin/mount --rbind "${bash}"/bin "$chrootdir"/bin
@@ -428,7 +420,7 @@ stdenv.mkDerivation rec {
     Name=${prettyName} ${version}
     Comment=${prettyName} ${version}
     Icon=${quartusUnwrapped}/quartus/adm/quartusii.png
-    Exec=$out/bin/quartus
+    Exec=$out/bin/quartus${stdenv.lib.optionalString is32bitPackage '' --64bit''}
     Terminal=false
     Path=$out
     EOF
