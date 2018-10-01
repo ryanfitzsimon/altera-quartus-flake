@@ -1,8 +1,7 @@
-{ stdenv, fetchurl, utillinux, file, bash, glibc, pkgsi686Linux, writeScript
+s@{ stdenv, fetchurl, utillinux, file, bash, glibc, pkgsi686Linux, writeScript
 , nukeReferences, glibcLocales, libfaketime, coreutils, gnugrep, gnused, proot
 # Runtime dependencies
-, zlib, glib, libpng12, freetype, libSM, libICE, libXrender, fontconfig
-, libXext, libX11, libXtst, gtk2, bzip2, libelf
+, zlib, glib, libpng12, freetype, fontconfig, gtk2, bzip2, libelf, xorg
 }:
 
 { baseName
@@ -62,25 +61,31 @@ let
     (commonGlibcAttrs224 oldAttrs) // { patches = [ ./patches/glibc/0001-Avoid-.symver-on-common-symbols-BZ-21666.patch ];  }
   );
 
+  getLibPathPkgs = pkgs: [
+    pkgs.zlib
+    pkgs.glib
+    pkgs.libpng12
+    pkgs.freetype
+    pkgs.xorg.libSM
+    pkgs.xorg.libICE
+    pkgs.xorg.libXrender
+    pkgs.fontconfig.lib
+    pkgs.xorg.libXext
+    pkgs.xorg.libX11
+    pkgs.xorg.libXtst
+    pkgs.gtk2
+    pkgs.bzip2.out
+    pkgs.libelf
+    pkgs.stdenv.cc.cc.lib
+  ];
+
   # Keep in sync with runtimeLibPath64
-  # (with pkgsi686Linux; [ .. ] doesn't bind strongly enough.)
   runtimeLibPath32 =
-    stdenv.lib.makeLibraryPath
-      [ pkgsi686Linux.zlib pkgsi686Linux.glib pkgsi686Linux.libpng12
-        pkgsi686Linux.freetype pkgsi686Linux.xorg.libSM pkgsi686Linux.xorg.libICE
-        pkgsi686Linux.xorg.libXrender pkgsi686Linux.fontconfig.lib
-        pkgsi686Linux.xorg.libXext pkgsi686Linux.xorg.libX11 pkgsi686Linux.xorg.libXtst
-        pkgsi686Linux.gtk2 pkgsi686Linux.bzip2.out pkgsi686Linux.libelf
-        pkgsi686Linux.stdenv.cc.cc.lib
-      ];
+    stdenv.lib.makeLibraryPath (getLibPathPkgs pkgsi686Linux);
 
   # Keep in sync with runtimeLibPath32
   runtimeLibPath64 =
-    stdenv.lib.makeLibraryPath
-    [ zlib glib libpng12 freetype libSM libICE libXrender fontconfig.lib
-      libXext libX11 libXtst gtk2 bzip2.out libelf
-      stdenv.cc.cc.lib
-    ];
+    stdenv.lib.makeLibraryPath (getLibPathPkgs s);
 
   runtimeLibPath =
     if is32bitPackage then runtimeLibPath32 else runtimeLibPath64;

@@ -1,8 +1,7 @@
 { stdenv, fetchurl, utillinux, file, bash, glibc, pkgsi686Linux, writeScript
 , nukeReferences, glibcLocales, libfaketime, coreutils, gnugrep, gnused, proot
 # Runtime libraries:
-, zlib, glib, libpng12, freetype, libSM, libICE, libXrender, fontconfig
-, libXext, libX11, libXtst, gtk2, bzip2, libelf
+, zlib, glib, libpng12, freetype, fontconfig, gtk2, bzip2, libelf, xorg
 }:
 
 let
@@ -14,8 +13,7 @@ let
       stdenv fetchurl utillinux file bash glibc pkgsi686Linux writeScript
       nukeReferences glibcLocales libfaketime coreutils gnugrep gnused proot
       # Runtime libraries:
-      zlib glib libpng12 freetype libSM libICE libXrender fontconfig
-      libXext libX11 libXtst gtk2 bzip2 libelf;
+      zlib glib libpng12 freetype fontconfig gtk2 bzip2 libelf xorg;
   };
 
   mkCommonQuartus = srcAttrs:
