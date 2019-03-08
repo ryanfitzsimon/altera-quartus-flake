@@ -34,6 +34,18 @@ in rec {
 
   inherit sources;
 
+  altera-quartus-ii-web-13_0_sp1 =
+    let
+      srcAttrs = sources.v13_0_sp1.web_edition;
+    in
+    buildQuartus {
+      inherit (srcAttrs) baseName prettyName is32bitPackage version;
+      components = with srcAttrs.components; [
+        quartus cyclone modelsim
+      ];
+      updateComponents = [];
+    };
+
   altera-quartus-ii-web-13 =
     mkCommonQuartus sources.v13.web_edition;
 

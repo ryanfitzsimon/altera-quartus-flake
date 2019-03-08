@@ -35,6 +35,58 @@
 
 rec {
 
+  v13_0_sp1 = rec {
+    recurseForDerivations = true;
+    version = "13.0.1.232";
+    is32bitPackage = true;
+    baseUrl = "http://download.altera.com/akdlm/software/acdsinst/13.0sp1/232/ib_installers";
+
+    web_edition = {
+      recurseForDerivations = true;
+      baseName = "altera-quartus-ii-web";
+      prettyName = "Quartus II Web Edition";
+      inherit version is32bitPackage updates;
+      components = {
+        recurseForDerivations = true;
+        quartus = fetchurl {
+          # Size: 1.6 GB MD5: BAD6E4F431720BD16859A22BB34666D6
+          url = "${baseUrl}/QuartusSetupWeb-${version}.run";
+          sha256 = "1g1n2siw6hiqhpnk4nhp6s0sclm761x2rqasz3g9r52lxif31mvx";
+        };
+        modelsim = fetchurl {
+          # Size: 776.0 MB MD5: 92DDD89285E72E063BE198FF439C54D1
+          url = "${baseUrl}/ModelSimSetup-${version}.run";
+          sha256 = "1dfmfa2lh7y1my80a2bz9x0pcmg37wrgcc2idic406bgw69z5c8p";
+        };
+        arria = fetchurl {
+          # Size: 467.3 MB MD5: 18262271D276A9966F42938E1E601AEE
+          url = "${baseUrl}/arria_web-${version}.qdz";
+          sha256 = "0lcj23lxc4g6xw4k84x17bpkka2cdi01zqhm7p8z809pqmr6f710";
+        };
+        cyclone = fetchurl {
+          # Size: 568.9 MB MD5: CDAC3B93F0DF21D7371E4395D31D0099
+          url = "${baseUrl}/cyclone_web-${version}.qdz";
+          sha256 = "095c6mmw8rr7d334xrcg4qpm7vsafs4q1vsmgi43f37k93hk27n9";
+        };
+        cyclonev = fetchurl {
+          # Size: 747.9 MB MD5: 4664B9BDD482C004C3C8D64FEFC124AB
+          url = "${baseUrl}/cyclonev-${version}.qdz";
+          sha256 = "0sa9qahfyszab5dzxyq3jnqx1dv1l9lq37smi67v46ysdrdvg8qg";
+        };
+        max = fetchurl {
+          # Size: 6.7 MB MD5: 64AACA8C4F6CD545D449BE3FFD8CBA50
+          url = "${baseUrl}/max_web-${version}.qdz";
+          sha256 = "08ga52aipxmyfga1vkxw8qq67z6c85j9d0yl1qzpfmk4fq09fiqc";
+        };
+      };
+    };
+
+    # Updates are shared between editions. I.e. this update can be applied to
+    # either web or subscription editions.
+    updates = {};
+
+  };
+
   v13 = rec {
     recurseForDerivations = true;
     version = "13.1.0.162";

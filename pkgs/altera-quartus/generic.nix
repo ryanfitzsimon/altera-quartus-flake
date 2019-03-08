@@ -154,7 +154,7 @@ let
 
   componentInstallers = mkInstallersDir components;
 
-  updateComponentInstallers = mkInstallersDir updateComponents;
+  updateComponentInstallers = stdenv.lib.optionalString (updateComponents != []) (mkInstallersDir updateComponents);
 
   quartusUnwrapped = stdenv.mkDerivation rec {
     name = "${baseName}-unwrapped-${version}";
@@ -253,6 +253,9 @@ let
                       *ELF*pie\ executable*|*ELF*shared\ object*x86-64*)
                           patchelf --set-rpath "$new_rpath" "$f" || { echo "FAILED: patchelf --set-rpath $f"; exit 1; }
                           ;;
+                      *ELF*executable*SPARC*)
+                          continue
+                          ;;
                       *ELF*executable*)
                           interp=$(patchelf --print-interpreter "$f") || { echo "FAILED: patchelf --print-interpreter $f"; exit 1; }
                           # Note the LSB interpreters, required by some files
@@ -298,6 +301,12 @@ let
           echo "Fix support for Linux 4.x in .../modelsim_ase/vco"
           sed -i -e "/case \$utype in/a 4.[0-9]*) vco=\"linux\" ;;" "$f"
       fi
+
+      # remove ModelSim Altera Edition
+      DEL_MSIM=ae
+      echo "removing clashing modelsim_$DEL_MSIM binaries (saves $(du -sh "$out"/modelsim_$DEL_MSIM | cut -f1))"
+      rm -rf "$out"/modelsim_$DEL_MSIM/
+
     '';
   };
 
