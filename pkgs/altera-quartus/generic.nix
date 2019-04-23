@@ -42,21 +42,24 @@ let
 
   # Using glibc>=2.25 causes the Quartus*Setup*run installer to hang.
   # Use 2.24 instead.
-  commonGlibcAttrs224 = rec {
+  commonGlibcAttrs224 = oldAttrs: rec {
     name = "glibc-${version}";
     version = "2.24";
     src = fetchurl {
       url = "http://ftpmirror.gnu.org/glibc/${name}.tar.xz";
       sha256 = "1lxmprg9gm73gvafxd503x70z32phwjzcy74i0adfi6ixzla7m4r";
     };
+    postInstall = builtins.replaceStrings
+     ["echo SUPPORTED-LOCALES=C.UTF-8/UTF-8 > ../glibc-2*/localedata/SUPPORTED\n"] [""]
+     oldAttrs.postInstall;
   };
 
   # Backport upstream patch to fix build against nixpkgs-18.09.
   glibc_lib_for_installer = glibc_lib.overrideAttrs (oldAttrs:
-    commonGlibcAttrs224 // { patches = [ ./patches/glibc/0001-Avoid-.symver-on-common-symbols-BZ-21666.patch ];  }
+    (commonGlibcAttrs224 oldAttrs) // { patches = [ ./patches/glibc/0001-Avoid-.symver-on-common-symbols-BZ-21666.patch ];  }
   );
   glibc_lib32_for_installer = glibc_lib32.overrideAttrs (oldAttrs:
-    commonGlibcAttrs224 // { patches = [ ./patches/glibc/0001-Avoid-.symver-on-common-symbols-BZ-21666.patch ];  }
+    (commonGlibcAttrs224 oldAttrs) // { patches = [ ./patches/glibc/0001-Avoid-.symver-on-common-symbols-BZ-21666.patch ];  }
   );
 
   # Keep in sync with runtimeLibPath64
