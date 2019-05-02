@@ -231,14 +231,15 @@ let
       nuke-refs "$out/logs/"*
 
       echo "Fixing ELF interpreter paths with patchelf"
-      find "$out" -type f | while read f; do
+      find "$out" -type f -print0 | xargs -0 file | grep ELF | while read l; do
+          f=$(echo $l | cut -d: -f1)
+          magic=$(echo $l | cut -d: -f1-)
           case "$f" in
               *.debug) continue;;
           esac
           # A few files are read-only. Make them writeable for patchelf. (Nix
           # will make all files read-only after the build.)
           chmod +w "$f"
-          magic=$(file "$f") || { echo "file \"$f\" failed"; exit 1; }
           case "$magic" in
               *ELF*dynamically\ linked*)
                   orig_rpath=$(patchelf --print-rpath "$f") || { echo "FAILED: patchelf --print-rpath $f"; exit 1; }
