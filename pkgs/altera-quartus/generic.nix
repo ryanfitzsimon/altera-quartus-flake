@@ -299,8 +299,8 @@ let
           echo "Fix hardcoded \"/bin/ls\" in .../modelsim_ase/vco"
           sed -i -e "s,/bin/ls,ls," "$f"
 
-          echo "Fix support for Linux 4.x in .../modelsim_ase/vco"
-          sed -i -e "/case \$utype in/a 4.[0-9]*) vco=\"linux\" ;;" "$f"
+          echo "Fix support for Linux 4.x and 5.x in .../modelsim_ase/vco"
+          sed -i -e "/case \$utype in/a [4-5].[0-9]*) vco=\"linux\" ;;" "$f"
       fi
 
       # remove ModelSim Altera Edition
