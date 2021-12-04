@@ -1,4 +1,4 @@
-s@{ stdenv, fetchurl, utillinux, file, bash, glibc, pkgsi686Linux, writeScript
+s@{ lib, stdenv, fetchurl, utillinux, file, bash, glibc, pkgsi686Linux, writeScript
 , nukeReferences, glibcLocales, libfaketime, coreutils, gnugrep, gnused, proot
 # Runtime dependencies
 , zlib, glib, libpng12, freetype, fontconfig, gtk2, bzip2, libelf, xorg
@@ -80,10 +80,10 @@ let
   ];
 
   runtimeLibPath =
-    stdenv.lib.makeLibraryPath
-    ((getLibPathPkgs s) ++ (stdenv.lib.optionals is32bitPackage (getLibPathPkgs pkgsi686Linux)));
+    lib.makeLibraryPath
+    ((getLibPathPkgs s) ++ (lib.optionals is32bitPackage (getLibPathPkgs pkgsi686Linux)));
 
-  runtimeBinPath = stdenv.lib.makeBinPath
+  runtimeBinPath = lib.makeBinPath
     [ coreutils gnugrep gnused glibc proot ];
 
   setup-chroot-and-exec = writeScript "setup-chroot-and-exec"
@@ -104,7 +104,7 @@ let
       ${utillinux}/bin/mount --rbind /tmp  "$chrootdir"/tmp
       ${utillinux}/bin/mount --rbind /dev  "$chrootdir"/dev
       ${utillinux}/bin/mount --rbind "${glibc_lib32_for_installer}"/lib "$chrootdir"/lib
-    '' + (stdenv.lib.optionalString is32bitPackage ''
+    '' + (lib.optionalString is32bitPackage ''
       ${utillinux}/bin/mount --rbind "${glibc_lib_for_installer}"/lib64 "$chrootdir"/lib64
     '') + ''
       ${utillinux}/bin/mount --rbind "${bash}"/bin "$chrootdir"/bin
@@ -140,7 +140,7 @@ let
           #     Unable to copy file
 
           mkdir -p "$out"
-          ${stdenv.lib.concatStringsSep "\n"
+          ${lib.concatStringsSep "\n"
             (map
               (p: ''
                 cp "${p}" "$out/$(stripHash "${p}")"
@@ -154,7 +154,7 @@ let
 
   componentInstallers = mkInstallersDir components;
 
-  updateComponentInstallers = stdenv.lib.optionalString (updateComponents != []) (mkInstallersDir updateComponents);
+  updateComponentInstallers = lib.optionalString (updateComponents != []) (mkInstallersDir updateComponents);
 
   quartusUnwrapped = stdenv.mkDerivation rec {
     name = "${baseName}-unwrapped-${version}";
@@ -210,7 +210,7 @@ let
               echo "ERROR: \"$installer\" either doesn't exist or is not executable"
               exit 1
           fi
-          maybe_accept_eula="${if stdenv.lib.versionAtLeast version "17.1" then "--accept_eula 1" else ""}"
+          maybe_accept_eula="${if lib.versionAtLeast version "17.1" then "--accept_eula 1" else ""}"
           echo "### ${run-in-fhs-env} $installer --mode unattended --installdir $out" $maybe_accept_eula
           "${run-in-fhs-env}" "$installer" --mode unattended --installdir "$out" $maybe_accept_eula
           echo "...done"
@@ -219,7 +219,7 @@ let
       echo "Running Quartus Setup (in FHS sandbox)..."
       run_quartus_installer "$(echo "${componentInstallers}"/Quartus*Setup*)"
 
-      ${stdenv.lib.optionalString (updateComponents != []) ''
+      ${lib.optionalString (updateComponents != []) ''
         echo "Running Quartus Update (in FHS sandbox)..."
         run_quartus_installer "$(echo "${updateComponentInstallers}"/Quartus*Setup*)"
       ''}
@@ -343,7 +343,7 @@ stdenv.mkDerivation rec {
     # write to __pycache__ in the (read-only) nix store.
     export PYTHONDONTWRITEBYTECODE=1
 
-    ${stdenv.lib.optionalString wrapWithLdLibraryPath ''
+    ${lib.optionalString wrapWithLdLibraryPath ''
       if [ "x\$LD_LIBRARY_PATH" != x ]; then
           export LD_LIBRARY_PATH="${runtimeLibPath}:\$LD_LIBRARY_PATH"
       else
@@ -421,7 +421,7 @@ stdenv.mkDerivation rec {
     Name=${prettyName} ${version}
     Comment=${prettyName} ${version}
     Icon=${quartusUnwrapped}/quartus/adm/quartusii.png
-    Exec=$out/bin/quartus${stdenv.lib.optionalString is32bitPackage '' --64bit''}
+    Exec=$out/bin/quartus${lib.optionalString is32bitPackage '' --64bit''}
     Terminal=false
     Path=$out
     EOF
@@ -442,7 +442,7 @@ stdenv.mkDerivation rec {
     EOF
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Development tools for Altera FPGA, CPLD and SoC designs";
     homepage = https://www.altera.com/;
     license = licenses.unfree;

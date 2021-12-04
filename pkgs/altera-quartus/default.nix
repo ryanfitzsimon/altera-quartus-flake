@@ -1,4 +1,4 @@
-{ stdenv, fetchurl, utillinux, file, bash, writeScript
+{ lib, stdenv, fetchurl, utillinux, file, bash, writeScript
 , nukeReferences, libfaketime, coreutils, gnugrep, gnused, proot
 # Runtime libraries:
 , zlib, glib, libpng12, freetype, fontconfig, gtk2, bzip2, libelf, xorg
@@ -20,7 +20,7 @@ let
     }) {};
   in import ./generic.nix {
     inherit
-      stdenv fetchurl utillinux file bash writeScript
+      lib stdenv fetchurl utillinux file bash writeScript
       nukeReferences libfaketime coreutils gnugrep gnused proot
       # Runtime libraries:
       zlib glib libpng12 freetype fontconfig gtk2 bzip2 libelf xorg;
