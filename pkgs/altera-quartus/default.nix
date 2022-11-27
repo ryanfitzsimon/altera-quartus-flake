@@ -17,7 +17,9 @@ let
       url = "https://github.com/nixos/nixpkgs/archive/34c7eb7545d155cc5b6f499b23a7cb1c96ab4d59.tar.gz";
       # Hash obtained using `nix-prefetch-url --unpack <url>`
       sha256 = "11z6ajj108fy2q5g8y4higlcaqncrbjm3dnv17pvif6avagw4mcb";
-    }) {};
+    }) {
+      system = "x86_64-linux";
+    };
   in import ./generic.nix {
     inherit
       lib stdenv fetchurl utillinux file bash writeScript
