@@ -1,16 +1,8 @@
-{ lib, stdenv, fetchurl, utillinux, file, bash, writeScript
-, nukeReferences, libfaketime, coreutils, gnugrep, gnused, proot
-# Runtime libraries:
-, zlib, glib, libpng12, freetype, fontconfig, gtk2, bzip2, libelf, xorg
-}:
+{}:
 
 let
 
-  sources = import ./sources.nix { inherit fetchurl; };
-
-  buildQuartus =
-  let
-    pkgs-19_03 = import (builtins.fetchTarball {
+  pkgs-19_03 = import (builtins.fetchTarball {
       # Descriptive name to make the store path easier to identify
       name = "nixos-19.03-2020-07-26";
       # Commit hash for nixos-19.03 as of 2020-07-26
@@ -19,14 +11,20 @@ let
       sha256 = "11z6ajj108fy2q5g8y4higlcaqncrbjm3dnv17pvif6avagw4mcb";
     }) {
       system = "x86_64-linux";
+      config.allowUnfree = true;
     };
-  in import ./generic.nix {
-    inherit
+
+  sources = import ./sources.nix { inherit (pkgs-19_03) fetchurl; };
+
+  buildQuartus =
+  let
+      in import ./generic.nix {
+    inherit (pkgs-19_03)
       lib stdenv fetchurl utillinux file bash writeScript
       nukeReferences libfaketime coreutils gnugrep gnused proot
       # Runtime libraries:
-      zlib glib libpng12 freetype fontconfig gtk2 bzip2 libelf xorg;
-    inherit (pkgs-19_03) glibc glibcLocales pkgsi686Linux;
+      zlib glib libpng12 freetype fontconfig gtk2 bzip2 libelf xorg
+      glibc glibcLocales pkgsi686Linux;
   };
 
   mkCommonQuartus = srcAttrs:
