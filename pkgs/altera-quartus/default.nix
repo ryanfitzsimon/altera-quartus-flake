@@ -9,7 +9,7 @@ let
       in import ./generic.nix {
     inherit (pkgs-19_03)
       lib stdenv fetchurl utillinux file bash writeScript
-      nukeReferences libfaketime coreutils gnugrep gnused proot
+      nukeReferences pax-utils libfaketime coreutils gnugrep gnused proot
       # Runtime libraries:
       zlib glib libpng12 freetype fontconfig gtk2 bzip2 libelf xorg
       glibc glibcLocales pkgsi686Linux;

@@ -1,5 +1,5 @@
 s@{ lib, stdenv, fetchurl, utillinux, file, bash, glibc, pkgsi686Linux, writeScript
-, nukeReferences, glibcLocales, libfaketime, coreutils, gnugrep, gnused, proot
+, nukeReferences, pax-utils, glibcLocales, libfaketime, coreutils, gnugrep, gnused, proot
 # Runtime dependencies
 , zlib, glib, libpng12, freetype, fontconfig, gtk2, bzip2, libelf, xorg
 }:
@@ -161,7 +161,7 @@ let
     inherit version;
     # srcs is for keeping track of inputs used for the build.
     srcs = components ++ updateComponents;
-    buildInputs = [ file nukeReferences ];
+    buildInputs = [ pax-utils nukeReferences ];
 
     # Fix this:
     # /nix/store/...-altera-quartus-ii-web-13.1.4.182/quartus/adm/qenv.sh: line 83: \
@@ -231,64 +231,75 @@ let
       nuke-refs "$out/logs/"*
 
       echo "Fixing ELF interpreter paths with patchelf"
-      find "$out" -type f -print0 | xargs -0 file | grep ELF | while read l; do
-          f=$(echo $l | cut -d: -f1)
-          magic=$(echo $l | cut -d: -f1-)
+      # scanelf walks the tree in a single process, skips non-ELF files and
+      # symlinks (-y), and reports machine, type, interpreter and RPATH, so
+      # only the patchelf writes remain.
+      scanelf -R -B -y -F '%a;%o;%i;%r;%F' "$out" | while IFS=';' read -r arch type interp orig_rpath f; do
+          [ "$interp" = "  -  " ] && interp=""
+          [ "$orig_rpath" = "  -  " ] && orig_rpath=""
           case "$f" in
               *.debug) continue;;
           esac
-          # A few files are read-only. Make them writeable for patchelf. (Nix
-          # will make all files read-only after the build.)
-          chmod +w "$f"
-          case "$magic" in
-              *ELF*dynamically\ linked*)
-                  orig_rpath=$(patchelf --print-rpath "$f") || { echo "FAILED: patchelf --print-rpath $f"; exit 1; }
-                  # Take care not to add ':' at start or end of RPATH, because
-                  # that is the same as '.' (current directory), and that's
-                  # insecure.
-                  if [ "$orig_rpath" != "" ]; then
-                      orig_rpath="$orig_rpath:"
+          if [ "$type" = ET_EXEC ] && [ -z "$interp" ]; then
+              echo "WARN: $f is statically linked. Needs fixup?"
+              continue
+          fi
+          # Take care not to add ':' at start or end of RPATH, because
+          # that is the same as '.' (current directory), and that's
+          # insecure.
+          if [ "$orig_rpath" != "" ]; then
+              orig_rpath="$orig_rpath:"
+          fi
+          new_rpath="$orig_rpath${runtimeLibPath}"
+          case "$type" in
+              ET_DYN)
+                  # PIE executables, and x86-64 shared objects. (32-bit
+                  # shared objects were never patched; they rely on the
+                  # wrappers' LD_LIBRARY_PATH.)
+                  if [ -n "$interp" ] || [ "$arch" = EM_X86_64 ]; then
+                      # A few files are read-only. Make them writeable for
+                      # patchelf. (Nix will make all files read-only after
+                      # the build.)
+                      chmod +w "$f"
+                      patchelf --set-rpath "$new_rpath" "$f" || { echo "FAILED: patchelf --set-rpath $f"; exit 1; }
                   fi
-                  new_rpath="$orig_rpath${runtimeLibPath}"
-                  case "$magic" in
-                      *ELF*pie\ executable*|*ELF*shared\ object*x86-64*)
-                          patchelf --set-rpath "$new_rpath" "$f" || { echo "FAILED: patchelf --set-rpath $f"; exit 1; }
+                  ;;
+              ET_EXEC)
+                  # Note the LSB interpreters, required by some files
+                  case "$interp" in
+                      /lib64/ld-linux-x86-64.so.2|/lib64/ld-lsb-x86-64.so.3)
+                          new_interp=$(cat "$NIX_CC"/nix-support/dynamic-linker)
                           ;;
-                      *ELF*executable*SPARC*)
-                          continue
+                      /lib/ld-linux.so.2|/lib/ld-lsb.so.3)
+                          new_interp="${glibc_lib32}/lib/ld-linux.so.2"
                           ;;
-                      *ELF*executable*)
-                          interp=$(patchelf --print-interpreter "$f") || { echo "FAILED: patchelf --print-interpreter $f"; exit 1; }
-                          # Note the LSB interpreters, required by some files
-                          case "$interp" in
-                              /lib64/ld-linux-x86-64.so.2|/lib64/ld-lsb-x86-64.so.3)
-                                  new_interp=$(cat "$NIX_CC"/nix-support/dynamic-linker)
-                                  ;;
-                              /lib/ld-linux.so.2|/lib/ld-lsb.so.3)
-                                  new_interp="${glibc_lib32}/lib/ld-linux.so.2"
-                                  ;;
-                              /lib/ld-linux-armhf.so.3|/lib64/ld64.so.1|/lib64/ld64.so.2)
-                                  # Ignore ARM/ppc64/ppc64le executables, they
-                                  # are not meant to be run on the build machine.
-                                  # Example files:
-                                  #   altera-quartus-prime-lite-15.1.0.185/hld/host/arm32/bin/aocl-binedit
-                                  #   altera-quartus-prime-lite-15.1.0.185/hld/host/ppc64/bin/aocl-binedit
-                                  #   altera-quartus-prime-lite-15.1.0.185/hld/host/ppc64le/bin/aocl-binedit
-                                  continue
-                                  ;;
-                              *)
+                      *)
+                          case "$arch" in
+                              EM_386|EM_X86_64)
                                   echo "FIXME: unhandled interpreter \"$interp\" in $f"
                                   exit 1
                                   ;;
                           esac
-                          test -f "$new_interp" || { echo "$new_interp is missing"; exit 1; }
-                          patchelf --set-interpreter "$new_interp" \
-                                   --set-rpath "$new_rpath" "$f" || { echo "FAILED: patchelf --set-interpreter $new_interp --set-rpath $new_rpath $f"; exit 1; }
+                          # Ignore ARM/ppc64/ppc64le/SPARC executables,
+                          # they are not meant to be run on the build
+                          # machine. Example files:
+                          #   altera-quartus-prime-lite-15.1.0.185/hld/host/arm32/bin/aocl-binedit
+                          #   altera-quartus-prime-lite-15.1.0.185/hld/host/ppc64/bin/aocl-binedit
+                          #   altera-quartus-prime-lite-15.1.0.185/hld/host/ppc64le/bin/aocl-binedit
+                          continue
                           ;;
                   esac
+                  test -f "$new_interp" || { echo "$new_interp is missing"; exit 1; }
+                  chmod +w "$f"
+                  patchelf --set-interpreter "$new_interp" \
+                           --set-rpath "$new_rpath" "$f" || { echo "FAILED: patchelf --set-interpreter $new_interp --set-rpath $new_rpath $f"; exit 1; }
                   ;;
-              *ELF*statically\ linked*)
-                  echo "WARN: $f is statically linked. Needs fixup?"
+              ET_REL)
+                  # Relocatable object files (.o) don't have interpreter/RPATH.
+                  ;;
+              *)
+                  echo "FIXME: unhandled ELF type \"$type\" in $f"
+                  exit 1
                   ;;
           esac
       done
