@@ -329,6 +329,13 @@ stdenv.mkDerivation rec {
   # version and srcs are unused by this derivation, but keep them as metadata
   # (for users).
   inherit (quartusUnwrapped) version srcs;
+
+  # Allow other derivations to access the actual installation path
+  # (useful for simulation library sources)
+  passthru = {
+    inherit quartusUnwrapped;
+  };
+
   buildCommand = ''
     # Provide convenience wrappers in $out/bin, so that the tools can be
     # started directly from PATH. Plain symlinks don't work, due to assumptions
