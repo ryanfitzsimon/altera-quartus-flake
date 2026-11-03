@@ -1,18 +1,6 @@
-{}:
+{ pkgs-19_03 }:
 
 let
-
-  pkgs-19_03 = import (builtins.fetchTarball {
-      # Descriptive name to make the store path easier to identify
-      name = "nixos-19.03-2020-07-26";
-      # Commit hash for nixos-19.03 as of 2020-07-26
-      url = "https://github.com/nixos/nixpkgs/archive/34c7eb7545d155cc5b6f499b23a7cb1c96ab4d59.tar.gz";
-      # Hash obtained using `nix-prefetch-url --unpack <url>`
-      sha256 = "11z6ajj108fy2q5g8y4higlcaqncrbjm3dnv17pvif6avagw4mcb";
-    }) {
-      system = "x86_64-linux";
-      config.allowUnfree = true;
-    };
 
   sources = import ./sources.nix { inherit (pkgs-19_03) fetchurl; };
 
