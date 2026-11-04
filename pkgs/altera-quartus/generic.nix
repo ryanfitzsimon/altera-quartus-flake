@@ -4,7 +4,7 @@ s@{ lib, stdenv, fetchurl, utillinux, file, bash, glibc, pkgsi686Linux, writeScr
 , zlib, glib, libpng12, freetype, fontconfig, gtk2, bzip2, libelf, xorg
 }:
 
-{ baseName
+lib.makeOverridable ({ baseName
 , prettyName ? baseName
 , version
 , components ? []
@@ -28,6 +28,10 @@ s@{ lib, stdenv, fetchurl, utillinux, file, bash, glibc, pkgsi686Linux, writeScr
 # LD_LIBRARY_PATH, thus breaking spawning firefox from it, so I see no reason
 # we shouldn't be equally lazy.
 , wrapWithLdLibraryPath ? true
+
+# Extension point to override how the installer is executed in an FHS
+# environment (e.g. in Docker builds where unshare is not allowed).
+, runInFhsEnv ? null
 }:
 
 let
@@ -114,15 +118,17 @@ let
   # buildFHSUserEnv from nixpkgs tries to mount a few directories that are not
   # available in sandboxed Nix builds (/sys, /run), hence we have our own
   # slimmed down variant.
-  run-in-fhs-env = writeScript "run-in-fhs-env"
-    ''
-      #!${bash}/bin/sh
-      if [ "$*" = "" ]; then
-          echo "Usage: run-in-fhs-env <COMMAND> [ARGS...]"
-          exit 1
-      fi
-      "${utillinux}/bin/unshare" -r -U -m "${setup-chroot-and-exec}" "$@"
-    '';
+  run-in-fhs-env =
+    if runInFhsEnv != null then runInFhsEnv
+    else writeScript "run-in-fhs-env"
+      ''
+        #!${bash}/bin/sh
+        if [ "$*" = "" ]; then
+            echo "Usage: run-in-fhs-env <COMMAND> [ARGS...]"
+            exit 1
+        fi
+        "${utillinux}/bin/unshare" -r -U -m "${setup-chroot-and-exec}" "$@"
+      '';
 
   mkInstallersDir = srcs:
     stdenv.mkDerivation rec {
@@ -331,9 +337,9 @@ stdenv.mkDerivation rec {
   inherit (quartusUnwrapped) version srcs;
 
   # Allow other derivations to access the actual installation path
-  # (useful for simulation library sources)
+  # (useful for simulation library sources) and installer FHS dependencies
   passthru = {
-    inherit quartusUnwrapped;
+    inherit quartusUnwrapped glibc_lib_for_installer glibc_lib32_for_installer;
   };
 
   buildCommand = ''
@@ -467,4 +473,4 @@ stdenv.mkDerivation rec {
     platforms = [ "x86_64-linux" ];
     maintainers = [ maintainers.bjornfor ];
   };
-}
+})
